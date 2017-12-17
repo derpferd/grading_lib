@@ -47,6 +47,18 @@ class GradeDB(object):
                "grades": self.grades}
         json.dump(obj, open(self.dbpath, "w"))
 
+    def save_as(self, out_file):
+        roster = Roster()
+        for name in self.students:
+            s = roster.students[name]
+            for grade, question in zip(self.grades[name], self.questions):
+                if s.score is None:
+                    s.score = 0
+                s.score += grade
+                s.add_cmt(question.get_msg(grade))
+        with open(out_file, "w") as fp:
+            roster.dump(fp)
+
     def merge(self, org_file, out_file=None):
         if out_file is None:
             base, ext = os.path.splitext(org_file)
@@ -109,6 +121,7 @@ class RecordList(npyscreen.MultiLineAction):
         super(RecordList, self).__init__(*args, **keywords)
         self.add_handlers({
             "^S": self.when_merge,
+            "^D": self.when_save,
         })
 
     def display_value(self, vl):
@@ -131,6 +144,14 @@ class RecordList(npyscreen.MultiLineAction):
         # else:
         #     npyscreen.notify("Didn't merge", title='Not Merged')
         #     time.sleep(.5)
+
+    def when_save(self, *args, **keywords):
+        the_selected_file = npyscreen.selectFile()
+        npyscreen.notify("Saving grades to {} now...".format(the_selected_file), title='Saving')
+        self.parent.parentApp.gradedb.save_as(the_selected_file)
+        npyscreen.notify("Finished saving in grades", title='Saved')
+        time.sleep(1)
+
 
 
 class RecordListDisplay(npyscreen.FormBaseNew):
