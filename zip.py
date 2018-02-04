@@ -18,7 +18,8 @@ def extract_moodle_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
 
     for sdir in subdirs:
         name = sdir.split("_")[0]
-        fname, lname = name.split(" ")
+        parts = name.split(" ")
+        fname, lname = " ".join(parts[:-1]), parts[-1]
 
         sid = roster.get_student_id_by_name(fname, lname)
 
