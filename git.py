@@ -38,3 +38,12 @@ class GitRepo(object):
         origin = self.repo.remotes["origin"]
         origin.pull(branch)
 
+
+def list_committed_file_after_commit(repo, commit):
+    cur_commit = repo.active_branch.commit
+
+    files = []
+    for diff in cur_commit.diff(commit):
+        files += [diff.a_path]
+
+    return files

@@ -14,11 +14,28 @@ class Question(object):
         self.points = points
         self.incorrect_msg = incorrect_msg
 
-    def get_msg(self, points):
+    def get_msg(self, points, custom_message=None):
         if points == self.points:
             return ""
         else:
-            return "{} (credit: {}/{})".format(self.incorrect_msg, points, self.points)
+            msg = self.incorrect_msg
+            if custom_message:
+                msg = custom_message
+            return "{} (credit: {}/{})".format(msg, points, self.points)
+
+
+class Writeup(object):
+    def __init__(self):
+        self.sections = []
+
+    def add_section(self, title, text):
+        self.sections += [{"title": title, "text": text}]
+
+    def dump(self, fp):
+        for section in self.sections:
+            fp.write("======= {} =======\n".format(section["title"]))
+            fp.write(section["text"])
+            fp.write("\n\n")
 
 
 class GradeDB(object):
@@ -108,12 +125,9 @@ class QuestionGrader(object):
         myApp.run()
         return False
 
-    def save(self):
-        pass
-
     def load(self):
-        if os.path.exists(self.save_loc):
-            pass
+        raise DeprecationWarning("No need to call this.")
+
 
 # GUI code
 class RecordList(npyscreen.MultiLineAction):
@@ -151,7 +165,6 @@ class RecordList(npyscreen.MultiLineAction):
         self.parent.parentApp.gradedb.save_as(the_selected_file)
         npyscreen.notify("Finished saving in grades", title='Saved')
         time.sleep(1)
-
 
 
 class RecordListDisplay(npyscreen.FormBaseNew):

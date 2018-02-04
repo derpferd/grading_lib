@@ -10,6 +10,7 @@ class Student(object):
         self.lname = lname
         self.score = None
         self.comment = ""
+        self.done = False
 
     def get_name(self, sep=" ", reverse=False):
         name = [self.fname, self.lname]
@@ -46,6 +47,9 @@ class Roster(object):
 
     def __iter__(self):
         return iter(sorted(self.students.values(), key=lambda x: x.x500))
+
+    def get_not_done(self):
+        return filter(lambda x: not x.done, self.students.values())
 
     def get_student_id_by_name(self, fname, lname, ignore_case=True):
         for sid, student in self.students.items():

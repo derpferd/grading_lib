@@ -1,5 +1,7 @@
 import os
 import hashlib
+import shutil
+import subprocess
 
 
 def hash_file(filepath):
@@ -42,3 +44,13 @@ def check_if_dir_contains_files(basedir, otherdir, match_file_names=False):
             if h not in other_hashes.values():
                 return False
     return True
+
+
+def hard_remove_dir(path):
+    path = os.path.abspath(path)
+    if os.path.exists(path):
+        assert os.path.isdir(path), "Path must be a directory"
+        try:
+            shutil.rmtree(path)
+        except:
+            subprocess.check_output(["sudo", "rm", "-rf", path], stderr=subprocess.STDOUT)

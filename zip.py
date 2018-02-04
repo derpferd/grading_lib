@@ -3,8 +3,10 @@ import tarfile
 import zipfile
 from shutil import copyfile
 
+from grading_lib import Roster
 
-def extract_moodle_zip(zippath, outpath, tmpdir, roster, internal_tarball=True):
+
+def extract_moodle_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarball=True):
     zipdir = os.path.join(tmpdir, "zip")
     with zipfile.ZipFile(zippath) as zf:
         zf.extractall(zipdir)
@@ -24,8 +26,10 @@ def extract_moodle_zip(zippath, outpath, tmpdir, roster, internal_tarball=True):
 
         if internal_tarball:
             # TODO: catch exceptions and give good error.
-            tarball_name = os.listdir(os.path.join(zipdir, sdir))[0]
-            tarpath = os.path.join(zipdir, sdir, tarball_name)
+            tarpath = os.path.join(zipdir, sdir)
+            if os.path.isdir(tarpath):
+                tarball_name = os.listdir(os.path.join(zipdir, sdir))[0]
+                tarpath = os.path.join(zipdir, sdir, tarball_name)
 
             if not tarpath.endswith(".tar.gz"):
                 print("Student submission must be a tar.gz. filename was {}".format(tarpath))
