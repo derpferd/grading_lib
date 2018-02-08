@@ -23,7 +23,9 @@ def extract_moodle_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
 
         sid = roster.get_student_id_by_name(fname, lname)
 
-        assert sid is not None, "Unknown student"
+        if sid is None:
+            continue
+        # assert sid is not None, "Unknown student"
 
         if internal_tarball:
             # TODO: catch exceptions and give good error.
@@ -32,9 +34,9 @@ def extract_moodle_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
                 tarball_name = os.listdir(os.path.join(zipdir, sdir))[0]
                 tarpath = os.path.join(zipdir, sdir, tarball_name)
 
-            if not tarpath.endswith(".tar.gz"):
-                print("Student submission must be a tar.gz. filename was {}".format(tarpath))
-                continue
+#            if not tarpath.endswith(".tar.gz"):
+#                print("Student submission must be a tar.gz. filename was {}".format(tarpath))
+#                continue
             sopath = os.path.join(outpath, sid)
             try:
                 with tarfile.open(tarpath, mode="r:gz") as tf:
