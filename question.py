@@ -24,6 +24,20 @@ class Question(object):
             return "{} (credit: {}/{})".format(msg, points, self.points)
 
 
+class PartialCreditQuestion(Question):
+    def __init__(self, name, msg=None):
+        super().__init__(name, 100, msg)
+
+    def get_msg(self, points, custom_message=None):
+        if points == 0:
+            return ""
+        else:
+            msg = self.incorrect_msg
+            if custom_message:
+                msg = custom_message
+            return "{} (credit: +{})".format(msg, points)
+
+
 class Writeup(object):
     def __init__(self):
         self.sections = []
