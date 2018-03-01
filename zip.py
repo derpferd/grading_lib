@@ -39,7 +39,7 @@ def extract_moodle_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
 #                continue
             sopath = os.path.join(outpath, sid)
             try:
-                with tarfile.open(tarpath, mode="r:gz") as tf:
+                with tarfile.open(tarpath, mode="r:*") as tf:
                     tf.extractall(sopath)
             except tarfile.ReadError:
                 print("Submission was not a valid tarball.")

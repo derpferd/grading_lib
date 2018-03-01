@@ -4,6 +4,7 @@ import npyscreen
 import math
 import time
 from .roster import Roster
+from collections import namedtuple
 
 log = open("log.log", "w")
 
@@ -53,25 +54,40 @@ class Writeup(object):
 
 
 class GradeDB(object):
+    Row = namedtuple("Row", ["x500", "score", "msg"])
     def __init__(self, questions, writeup_dir, dbpath):
         self.questions = questions
         self.writeup_dir = writeup_dir
         self.dbpath = dbpath
         self.students = []
         self.grades = {}
+        self.questions_by_name = {}
         self.__load_or_init()
 
     def __load_or_init(self):
+        for question in self.questions:
+            self.questions_by_name[question.name] = question
         if os.path.exists(self.dbpath):
             obj = json.load(open(self.dbpath, "r"))
             self.students = obj["students"]
             self.grades = obj["grades"]
-        else:
-            # Need to init
-            for writeup in sorted(os.listdir(self.writeup_dir)):
-                name = os.path.splitext(writeup)[0]
+
+        # Add any non added students
+        for writeup in sorted(os.listdir(self.writeup_dir)):
+            name = os.path.splitext(writeup)[0]
+            if name not in self.students:
                 self.students += [name]
-                self.grades[name] = [0] * len(self.questions)
+                self.grades[name] = {}
+                for question in self.questions:
+                    self.grades[name][question.name] = 0
+
+        self.students.sort()
+
+        # Add any non added questions
+        for student in self.students:
+            for question in self.questions:
+                if question.name not in self.grades[student]:
+                    self.grades[student][question.name] = 0
 
     def save(self):
         obj = {"students": self.students,
@@ -82,7 +98,8 @@ class GradeDB(object):
         roster = Roster()
         for name in self.students:
             s = roster.students[name]
-            for grade, question in zip(self.grades[name], self.questions):
+            for q_name, grade in self.grades[name].items():
+                question = self.questions_by_name[q_name]
                 if s.score is None:
                     s.score = 0
                 s.score += grade
@@ -99,7 +116,8 @@ class GradeDB(object):
             roster.load(fp)
         for name in self.students:
             s = roster.students[name]
-            for grade, question in zip(self.grades[name], self.questions):
+            for q_name, grade in self.grades[name].items():
+                question = self.questions_by_name[q_name]
                 s.score += grade
                 s.add_cmt(question.get_msg(grade))
 
@@ -107,21 +125,31 @@ class GradeDB(object):
             roster.dump(fp)
 
     def get_rows(self):
-        return [(name, sum(self.grades[name]), self.get_msg_for(name)) for name in self.students]
+        return [self.Row(name, sum(self.grades[name].values()), self.get_msg_for(name)) for name in self.students]
 
-    def get_grades_for(self, name):
+    def get_grades(self, name):
         return self.grades[name]
 
-    def set_grades_for(self, name, grades):
-        self.grades[name] = grades
+    def get_grade(self, name, question):
+        return self.grades[name][question]
+
+    def set_grade(self, x500, q_name, grade):
+        self.grades[x500][q_name] = grade
 
     def get_msg_for(self, name):
         grades = self.grades[name]
-        return "  ".join(map(lambda x: x[1].get_msg(x[0]), zip(grades, self.questions))).lstrip().replace("    ", "  ")
+        msgs = []
+        for question in self.questions:
+            msgs += [question.get_msg(grades[question.name])]
+        return "  ".join(msgs)
+        # return "  ".join(map(lambda x: x[1].get_msg(x[0]), zip(grades, self.questions))).lstrip().replace("    ", "  ")
 
     def get_text_for(self, value):
         name = value
         return open(os.path.join(self.writeup_dir, name + ".txt"), "rb").read().decode("utf-8", "ignore")
+
+    def get_writeup(self, x500):
+        return json.load(open(os.path.join(self.writeup_dir, x500 + ".json"), "r"))
 
 
 class QuestionGrader(object):
@@ -205,9 +233,9 @@ class EditRecord(npyscreen.ActionForm):
         self.value = None
         # self.questions = self.add(npyscreen.BoxBasic, name="Questions:", max_width=30, relx=2, max_height=3)
         # self.wgLastName = self.add(npyscreen.TitleText, name = "Last Name:",)
-        self.questions = []
+        self.questions = {}
         for question in self.parentApp.gradedb.questions:
-            self.questions += [self.add(TitleNumber, name="{}:".format(question.name), value="", total=str(question.points), relx=3, max_width=30)]
+            self.questions[question.name] = self.add(TitleNumber, name="{}:".format(question.name), value="", total=str(question.points), relx=3, max_width=30)
 
         # self.writeup = self.add(npyscreen.Pager, name="Writeup", rely=2, relx=33)
         self.writeup = self.add(npyscreen.Pager, name="Writeup", rely=2, relx=34, autowrap=True, exit_left=True, exit_right=True)
@@ -221,12 +249,12 @@ class EditRecord(npyscreen.ActionForm):
             record = self.parentApp.gradedb.get_text_for(self.value)
             self.name = "Grading for %s" % self.value
             self.writeup.values = record.split("\n")
-            grades = self.parentApp.gradedb.get_grades_for(self.value)
-            for grade, question in zip(grades, self.questions):
+            grades = self.parentApp.gradedb.get_grades(self.value)
+            for q_name, grade in grades.items():
                 if grade == 0:
-                    question.value = ""
+                    self.questions[q_name].value = ""
                 else:
-                    question.value = str(grade)
+                    self.questions[q_name].value = str(grade)
             # self.record_id          = record[0]
             # self.wgLastName.value   = record[1]
             # self.wgOtherNames.value = record[2]
@@ -248,8 +276,9 @@ class EditRecord(npyscreen.ActionForm):
         self.on_cancel()
 
     def on_ok(self):
-        grades = [int("0" + x.value) for x in self.questions]
-        self.parentApp.gradedb.set_grades_for(self.value, grades)
+        # grades = [int("0" + x.value) for x in self.questions]
+        for q_name, question in self.questions.items():
+            self.parentApp.gradedb.set_grade(self.value, q_name, int("0" + question.value))
         self.parentApp.gradedb.save()
 
         # if self.record_id: # We are editing an existing record

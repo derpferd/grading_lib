@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Grader{% endblock %}
+{% block body %}
+<!--<header class="navbar">-->
+  <!--<a href="/merge">Merge</a>-->
+    <!--<h3 style="float: right;">{{ message }}</h3>-->
+<!--</header>-->
+<div class="container-fluid">
+  <form action="/merge" method="post">
+    <div class="form-group">
+      <label for="srcSelect">Select the source:</label>
+      <select multiple class="form-control" id="srcSelect" name="src">
+        {% for file in files  %}
+          <option value="{{ file }}">{{ file }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <input type="hidden" value="{{ origin }}" name="origin">
+    <button type="submit" class="btn btn-primary">Merge</button>
+  </form>
+</div>
+{% endblock %}

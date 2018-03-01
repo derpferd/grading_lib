@@ -4,6 +4,7 @@ import time
 from multiprocessing.pool import Pool
 
 from grading_lib import Roster, extract_moodle_zip
+from grading_lib.interface import WebGrader
 
 
 class GradingError(Exception):
@@ -40,6 +41,7 @@ class Grader(object):
         The reason to have fetch separate from pre_grade is so that we could pull a repo once. etc...
     """
     THREAD_SAFE = False  # by default assume not thread safe.
+    VERBOSE = False
 
     OUT_DIR = "output"
 
@@ -80,6 +82,18 @@ class Grader(object):
         """
         pass
 
+    @property
+    def manual_questions(self):
+        return []
+
+    @property
+    def write_ups_dir(self):
+        return os.path.join(self.OUT_DIR, "writeups")
+
+    @property
+    def save_loc(self):
+        return os.path.join(self.OUT_DIR, "q_grading.sav")
+
     def main(self):
         """This will parse command line args and run needed steps."""
         parser = argparse.ArgumentParser()
@@ -89,16 +103,25 @@ class Grader(object):
         parser.add_argument("-o", "--save-output", help="Save the grades to the output directory", action="store_true")
         parser.add_argument("-f", "--fetch", help="Run fetch step", action="store_true")
         parser.add_argument("-m", "--manual", help="Do the manual part of the grading.", action="store_true")
+        parser.add_argument("-v", "--verbose", help="Print Debug", action="store_true")
+        parser.add_argument("--serve", help="Start server.", action="store_true")
         args = parser.parse_args()
 
         assert os.path.exists(args.roster) and os.path.isfile(
             args.roster), "Invalid roster file: '{}' does not exist or isn't a file".format(args.roster)
+
+        if args.verbose:
+            self.VERBOSE = True
 
         if args.manual:
             self.manual_grade()
             return
 
         self.roster = Roster(args.roster)
+        if args.serve:
+            WebGrader(self).run()
+            return
+
         if args.student:  # If we only want a single student then replace the list of students with the single one.
             self.roster.students = {args.student: self.roster.students[args.student]}
 
@@ -152,6 +175,6 @@ class MoodleBasedGrader(Grader):
         moodle_zip = os.listdir("moodle_dump")[0]
         assert moodle_zip.endswith(".zip"), "Moodle archive must be a zip file."
 
-    def pre_grade(self):
-        moodle_zip = os.listdir("moodle_dump")[0]
+    # def pre_grade(self):
+    #     moodle_zip = os.listdir("moodle_dump")[0]
         extract_moodle_zip("moodle_dump/" + moodle_zip, "input", "tmp", self.roster, internal_tarball=self.EXTRACT_SUBMISSION)

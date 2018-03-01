@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Home{% endblock %}
+{% block body %}
+<h2>{{ x500 }}</h2>
+<div class="container">
+  <div class="row">
+    <div class="col-2">
+      <form action="/grade" method="post">
+        <input type="hidden" name="x500" value="{{ x500 }}"/>
+        {% for question in questions %}
+        <div class="form-group row">
+            <label for="{{ question.name }}">{{ question.name }}</label>
+            <!-- <input type="email" class="form-control"  placeholder="Enter email"> -->
+
+            <div class="input-group">
+              <input type="number" class="form-control" id="{{ question.name }}" name="{{ question.name }}" value="{{ grades[question.name] }}" placeholder="" step="1" min="0" max="{{ question.points }}" required>
+                <div class="input-group-postpend">
+                  <span class="input-group-text">/{{ question.points }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <div class="form-group row">
+          <button type="submit" class="btn btn-primary" name="action" value="save_next" style="margin-right: 1em">Next</button>
+          <button type="submit" class="btn btn-primary" name="action" value="save">List</button>
+        </div>
+      </form>
+    </div>
+    <div class="col-8">
+      <nav id="navbar-example2" class="navbar navbar-light bg-light">
+        <a class="navbar-brand" href="#">Navbar</a>
+        <ul class="nav nav-pills">
+          {% for section in writeup %}
+            <li class="nav-item">
+              <a class="nav-link" href="#{{ section.id }}">{{ section.name }}</a>
+            </li>
+          {% endfor %}
+          <!-- <li class="nav-item">
+            <a class="nav-link" href="#writeup">Write Up</a>
+          </li> -->
+          <!-- <li class="nav-item">
+            <a class="nav-link" href="#mdo">@mdo</a>
+          </li> -->
+          <!-- <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Dropdown</a>
+            <div class="dropdown-menu">
+              <a class="dropdown-item" href="#one">one</a>
+              <a class="dropdown-item" href="#two">two</a>
+              <div role="separator" class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#three">three</a>
+            </div>
+          </li> -->
+        </ul>
+      </nav>
+      <div data-spy="scroll" data-target="#navbar-example2" data-offset="0" style="position: relative; overflow-y:scroll;height:850px">
+        {% for section in writeup %}
+          <h4 id="{{ section.id }}">{{ section.name }}</h4>
+          <p>{{ section.html|safe }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

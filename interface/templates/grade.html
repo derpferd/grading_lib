@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}Grader{% endblock %}
+{% block body %}
+<header class="navbar">
+  <a href="/merge">Merge</a>
+    <h3 style="float: right;">{{ message }}</h3>
+</header>
+<div class="container-fluid">
+  <div>
+    <div class="list-group">
+      {% for row in rows %}
+        <a href="/grade/{{ row.x500 }}" class="list-group-item list-group-item-action">{{ row.x500 }} - {{ row.score }} - {{ row.msg }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<div style="height: 240px;"></div>
+{% endblock %}
