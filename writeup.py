@@ -5,7 +5,9 @@ class Writeup:
     def __init__(self, sections=None):
         if sections is None:
             sections = []
-        self.sections = sections
+        self.sections = []
+        for section in sections:
+            self.sections += [{**section, "id": "writeup-section-{}".format(len(self.sections))}]
 
     def __add__(self, other):
         return Writeup(self.sections + other.sections)

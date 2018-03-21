@@ -108,6 +108,7 @@ class GradeDB(object):
             roster.dump(fp)
 
     def merge(self, org_file, out_file=None):
+        # TODO: make merge work with groups
         if out_file is None:
             base, ext = os.path.splitext(org_file)
             out_file = "{}_merged{}".format(base, ext)

@@ -1,10 +1,13 @@
 import argparse
+from typing import List
+
 import os
 import time
 from multiprocessing.pool import Pool
 
-from grading_lib import Roster, extract_moodle_zip
+from grading_lib import extract_moodle_zip, GitRepo
 from grading_lib.interface import WebGrader
+from grading_lib.roster import Student, StudentGroup, Roster
 
 
 class GradingError(Exception):
@@ -16,7 +19,21 @@ class GradingError(Exception):
         return "{} for {}: {}".format(self.__class__.__name__, self.x500, self.message)
 
 
+class GroupGradingError(GradingError):
+    def __init__(self, student_x500s, message):
+        self.x500s = student_x500s
+        self.x500 = student_x500s[0]
+        self.message = message
+
+    def __str__(self):
+        return "{} for {}: {}".format(self.__class__.__name__, self.x500s, self.message)
+
+
 class FetchError(GradingError):
+    pass
+
+
+class GroupFetchError(GroupGradingError):
     pass
 
 
@@ -29,6 +46,7 @@ class InvalidSubmissionError(GradingError):
 class Grader(object):
     """ Grading Pipeline:
           - `fetch`
+          - If group_based: `get_submitting_student(group)`
           - for each student
             - `fetch_student`
           - `pre_grade`
@@ -42,6 +60,7 @@ class Grader(object):
     """
     THREAD_SAFE = False  # by default assume not thread safe.
     VERBOSE = False
+    GROUP_BASED = False
 
     OUT_DIR = "output"
 
@@ -59,6 +78,9 @@ class Grader(object):
     def fetch(self):
         pass
 
+    def get_submitting_student(self, group: List[Student]) -> Student:
+        raise NotImplemented()
+
     def fetch_student(self, student):
         pass
 
@@ -69,7 +91,7 @@ class Grader(object):
     def pre_grade_student(self, student):
         pass
 
-    def grade_student(self, student):
+    def grade_student(self, student: Student):
         pass
 
     def post_grade(self):
@@ -97,6 +119,9 @@ class Grader(object):
     def main(self):
         """This will parse command line args and run needed steps."""
         parser = argparse.ArgumentParser()
+        if self.GROUP_BASED:
+            parser.add_argument("-g", "--groups", help="The filepath of the file containing the groups", type=str,
+                                default="groups.json")
         parser.add_argument("-s", "--student", help="only grade a student by their x500", nargs="?", type=str)
         parser.add_argument("-r", "--roster", help="The filepath of the roster to use.", nargs="?", type=str,
                             default="../roster.csv")
@@ -109,6 +134,9 @@ class Grader(object):
 
         assert os.path.exists(args.roster) and os.path.isfile(
             args.roster), "Invalid roster file: '{}' does not exist or isn't a file".format(args.roster)
+        if self.GROUP_BASED:
+            assert os.path.exists(args.groups) and os.path.isfile(
+            args.groups), "Invalid group file: '{}' does not exist or isn't a file".format(args.groups)
 
         if args.verbose:
             self.VERBOSE = True
@@ -118,11 +146,15 @@ class Grader(object):
             return
 
         self.roster = Roster(args.roster)
+        if self.GROUP_BASED:
+            self.roster.load_groups(args.groups)
+
         if args.serve:
             WebGrader(self).run()
             return
 
         if args.student:  # If we only want a single student then replace the list of students with the single one.
+            __all_students = self.roster.students
             self.roster.students = {args.student: self.roster.students[args.student]}
 
         start_time = time.time()
@@ -138,6 +170,25 @@ class Grader(object):
                     student.done = True
                     student.add_cmt("{} (credit: 0/100)".format(e.message))
             list(self.map(do_fetch, self.roster))
+
+        if self.GROUP_BASED:
+            if args.student:
+                for group in self.roster.groups:
+                    student = __all_students[args.student]
+                    if student in group:
+                        self.roster.groups = [group]
+                        break
+
+            for group in self.roster.groups:
+                try:
+                    self.roster.group_submitters[self.get_submitting_student(group)] = group
+                except GroupFetchError as e:
+                    student = self.roster.students[e.x500]
+                    self.roster.group_submitters[student] = group
+                    student.done = True
+                    student.add_cmt("{} (credit: 0/100)".format(e.message))
+
+            self.roster.students = {student.x500: student for student in self.roster.group_submitters}
 
         self.pre_grade()
 
@@ -155,6 +206,13 @@ class Grader(object):
 
         self.post_grade()
 
+        if self.GROUP_BASED:
+            for submitter, group in self.roster.group_submitters.items():
+                for student in group:
+                    student.score = submitter.score
+                    student.comment = submitter.comment
+                    self.roster.students[student.x500] = student
+
         if args.save_output:
             self.roster.export_grades(os.path.join(self.OUT_DIR, "{}_grades.csv".format(int(start_time))))
         else:
@@ -163,6 +221,47 @@ class Grader(object):
         end_time = time.time()
         print("Took {} seconds.".format(int(end_time - start_time)))
         print("Remember to run using the '-m' option to finish the grading.")
+
+
+class GitBasedGrader(Grader):
+    GIT_REPO_URL: str  # ex. "git@github.umn.edu:{}/lab_name.git" Note: '{}' will be replaced by the student's x500.
+
+    def __init__(self):
+        super().__init__()
+        assert self.GIT_REPO_URL != "", "You must set a git repo url"
+
+    def repo_for(self, student):
+        return GitRepo(student.x500, self.GIT_REPO_URL.format(student.x500), cache_dir="repos")
+
+    def fetch_student(self, student):
+        if self.VERBOSE:
+            print("Pulling {}...".format(student))
+        repo = self.repo_for(student)
+        try:
+            repo.pull()
+        except:  # TODO: Fix this except to only catch the correct errors.
+            repo.remove()
+            raise FetchError(student.x500, "{}'s repo is non-existent or you don't have access permissions.".format(student.x500))
+        return repo
+
+    def get_submitting_student(self, group: List[Student]) -> Student:
+        submitting_student = None
+        submitting_student_repo = None
+        for student in group:
+            if os.path.exists(os.path.join("repos", student.x500)):
+                if submitting_student is None:
+                    submitting_student = student
+                    submitting_student_repo = self.repo_for(student)
+                else:
+                    print("Multiple students submitted. :(")
+                    if self.repo_for(student).commit().authored_date > submitting_student_repo.commit().authored_date:
+                        # This one is newer
+                        submitting_student = student
+                        submitting_student_repo = self.repo_for(student)
+                    print("\tSelected {}'s".format(submitting_student))
+        if submitting_student is None:
+            raise GroupFetchError([x.x500 for x in group], "No student in group submitted. :(")
+        return submitting_student
 
 
 class MoodleBasedGrader(Grader):

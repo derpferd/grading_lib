@@ -1,5 +1,8 @@
 from __future__ import print_function
 import csv
+import json
+from typing import List, Dict
+
 import io
 
 
@@ -25,14 +28,28 @@ class Student(object):
     def add_cmt(self, s):
         self.add_comment(s)
 
-    def __str__(self):
+    def __repr__(self):
         return "<Student {}>".format(self.x500)
+
+    def __str__(self):
+        return self.get_name()
+
+
+class StudentGroup(list):
+    def __init__(self, students: List[Student]):
+        super().__init__(students)
 
 
 class Roster(object):
+    students: Dict[str, Student]  # sid -> student
+    groups: List[StudentGroup]
+    group_submitters: Dict[Student, StudentGroup]
+
     def __init__(self, roster_path="../roster.csv"):
         self.roster_path = roster_path
         self.students = {}
+        self.groups = []
+        self.group_submitters = {}
         self.__load_roster()
 
     def __load_roster(self):
@@ -60,6 +77,14 @@ class Roster(object):
                 if student.fname == fname and student.lname == lname:
                     return sid
         return None
+
+    def load_groups(self, filename: str):
+        self.groups = []  # type: List[StudentGroup]
+        with open(filename, "r") as fp:
+            obj = json.load(fp)
+        for group in obj:
+            students = [self.students[sid] for sid in group]
+            self.groups += [StudentGroup(students)]
 
     def load(self, f):
         roster_reader = csv.DictReader(f)

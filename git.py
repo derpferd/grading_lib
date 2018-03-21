@@ -3,6 +3,8 @@ import os
 import sys
 import subprocess
 
+import shutil
+
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 5, "Python >= 3.5 required"
 
 
@@ -64,6 +66,10 @@ class GitRepo(object):
 
         origin = self.repo.remotes["origin"]
         origin.pull(branch)
+
+    def remove(self):
+        self._repo = None
+        shutil.rmtree(self.path)
 
 
 def list_committed_file_after_commit(repo, commit):
