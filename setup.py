@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
@@ -9,9 +9,9 @@ setup(
     author='Jonathan Beaulieu',
     author_email='123.jonathan@gmail.com',
     license='MIT',
-    packages=['grading_lib'],
+    packages=find_packages(),
     package_data={
-        'grading_lib': [
+        'grading_lib.interface': [
             'static/*',
             'static/highlight/*',
             'static/highlight/styles/*',
