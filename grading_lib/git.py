@@ -1,9 +1,9 @@
-import git
 import os
-import sys
-import subprocess
-
 import shutil
+import sys
+from typing import Optional, Union, List
+
+import git
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 5, "Python >= 3.5 required"
 
@@ -19,6 +19,10 @@ class GitRepo(object):
     def path(self):
         full_path = os.path.abspath(os.path.join(self.cache_dir, self.name))
         return full_path
+
+    @property
+    def is_branchless(self):
+        return len(self.repo.branches) == 0
 
     @property
     def repo(self):
@@ -37,26 +41,60 @@ class GitRepo(object):
                 raise Exception("Couldn't find location repo and no remote was given.")
         return self._repo
 
-    def diff(self, start, end=None, color=False):
+    def diff(self, start, end=None, color=False, exclude: Optional[Union[str, List]]=None, include: Optional[Union[str, List]]=None):
+        """
+
+        Args:
+            start:
+            end:
+            color:
+            exclude: A list or str of path(s) to exclude from diff.
+            include: A list or str of path(s) to include to diff.
+
+        Returns:
+
+        """
+        extra_args = []
+        if include:
+            if isinstance(include, str):
+                extra_args += [f':{include}']
+            elif isinstance(include, list):
+                for path in include:
+                    extra_args += [f':{path}']
+
+        if exclude:
+            if isinstance(exclude, str):
+                extra_args += [f':!{exclude}']
+            elif isinstance(exclude, list):
+                for path in exclude:
+                    extra_args += [f':!{path}']
+
         if color:
             if end:
-                return self.repo.git.execute(["git", "-c", "color.ui=always", "diff", start.hexsha, end.hexsha])
+                diff_unsafe_string = self.repo.git.execute(["git", "-c", "color.ui=always", "diff", start.hexsha, end.hexsha] + extra_args)
             else:
-                return self.repo.git.execute(["git", "-c", "color.ui=always", "diff", start.hexsha])
+                diff_unsafe_string = self.repo.git.execute(["git", "-c", "color.ui=always", "diff", start.hexsha] + extra_args)
         else:
             if end:
-                return self.repo.git.diff(start, end)
+                diff_unsafe_string = self.repo.git.diff(start, end, *extra_args)
             else:
-                return self.repo.git.diff(start)
+                diff_unsafe_string = self.repo.git.diff(start, *extra_args)
+        return diff_unsafe_string.encode("utf-8", "replace").decode("utf-8")
 
-    def html_diff(self, start, end=None):
-        if end:
-            diff = self.repo.git.diff(start, end)
-        else:
-            diff = self.repo.git.diff(start)
-        return "<pre><code>{}</code></pre>".format(diff)
+    def html_diff(self, start, end=None, exclude=None, include=None):
+        return f"<pre><code>{self.diff(start, end, color=False, exclude=exclude, include=include)}</code></pre>"
         # out = subprocess.check_output(["pygmentize", "-f", "html", "-O", "style=emacs", "-l", "diff"], input=diff.encode(encoding="utf-8")).decode(encoding="utf-8")
         # return "<div class='diff'>{}</div>".format(out)
+
+    def log(self, start, end=None):
+        if end:
+            log_string = self.repo.git.log(f'{start}...{end}')
+        else:
+            log_string = self.repo.git.log(f'{start}...')
+        return log_string.encode("utf-8", "replace").decode("utf-8")
+
+    def html_log(self, start, end=None):
+        return f"<pre><code>{self.log(start, end)}</code></pre>"
 
     def commit(self, *args):
         return self.repo.commit(*args)

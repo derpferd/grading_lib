@@ -25,4 +25,4 @@ class Writeup:
         for section in self.sections:
             section_strs += ["=== {}\n{}".format(section["name"], section["text"])]
         with open(filename + ".txt", "w") as fp:
-            fp.write("\n\n".join(section_strs))
+            fp.write(bytes("\n\n".join(section_strs), encoding='utf8').decode('utf8', 'surrogateescape'))

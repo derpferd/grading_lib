@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='grading_lib',
-    version='2.0.0',
+    version='3.0.a1',
     description='A bunch of random grading functions',
     url='https://github.com/derpferd/grading_lib.git',
     author='Jonathan Beaulieu',
@@ -22,6 +22,7 @@ setup(
         'flask',
         'click',
         'GitPython',
+        'docker',
     ],
     zip_safe=True,
 )
