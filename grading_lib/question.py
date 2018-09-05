@@ -1,8 +1,9 @@
 import json
 import os
-import npyscreen
 import math
 import time
+
+from grading_lib import npyscreen
 from .roster import Roster
 from collections import namedtuple
 
@@ -309,7 +310,6 @@ class AddressBookApplication(npyscreen.NPSAppManaged):
         self.addForm("MAIN", RecordListDisplay)
         self.addForm("EDITRECORDFM", EditRecord)
 
-import curses
 
 class NumberEntry(npyscreen.Textfield):
     def __init__(self, screen, total=None, *args, **kwargs):
