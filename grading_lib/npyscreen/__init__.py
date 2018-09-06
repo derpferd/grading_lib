@@ -94,9 +94,6 @@ from .utilNotify                 import notify, notify_confirm, notify_wait, not
 
 # Base classes for overriding:
 
-# Standard Forms:
-from . import stdfmemail
-
 # Experimental Only
 from .wgtextboxunicode import TextfieldUnicode
 from .wgtexttokens     import TextTokens, TitleTextTokens
