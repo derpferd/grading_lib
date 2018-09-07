@@ -3,8 +3,9 @@ import os
 import shutil
 import tarfile
 import tempfile
+from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Dict
+from typing import Dict, Union
 
 import docker
 import requests
@@ -28,7 +29,7 @@ class DockerGrader:
         self.client = docker.from_env()
         self.default_timeout_sec = default_timeout
     
-    def run(self, files: Dict[str, str], timeout: int=None) -> CompletedProcess:
+    def run(self, files: Dict[Union[str, Path], Union[str, Path]], timeout: int=None) -> CompletedProcess:
         """
         Args:
             files: A dictionary mapping files pathes on the host to a path on the guest relative to the testing env.
@@ -67,14 +68,14 @@ class DockerGrader:
                                 stdout=container.logs(stdout=True, stderr=False),
                                 stderr=container.logs(stdout=False, stderr=True))
         
-    def create_file_bundle(self, files: Dict[str, str]) -> bytes:
+    def create_file_bundle(self, files: Dict[Union[str, Path], Union[str, Path]]) -> bytes:
         archive = io.BytesIO()
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             dir_name = os.path.join(tmpdirname, "env_add")
             os.mkdir(dir_name)
             for src, dest in files.items():
-                shutil.copy2(src, os.path.join(dir_name, dest))
+                shutil.copy2(src, os.path.join(dir_name, str(dest)))
             with tarfile.open(fileobj=archive, mode="w:gz") as tf:
                 tf.add(dir_name, arcname=os.path.basename(dir_name))
 

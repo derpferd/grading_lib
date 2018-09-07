@@ -1,47 +1,14 @@
 import argparse
-from typing import List
-
 import os
 import time
+from contextlib import suppress
 from multiprocessing.pool import Pool
+from typing import List
 
-from grading_lib import extract_moodle_zip, GitRepo
-from grading_lib.interface import WebGrader
-from grading_lib.roster import Student, StudentGroup, Roster
+from .errors import *
+from ..interface import WebGrader
+from ..roster import Student, Roster
 
-
-class GradingError(Exception):
-    def __init__(self, student_x500, message):
-        self.x500 = student_x500
-        self.message = message
-
-    def __str__(self):
-        return "{} for {}: {}".format(self.__class__.__name__, self.x500, self.message)
-
-
-class GroupGradingError(GradingError):
-    def __init__(self, student_x500s, message):
-        self.x500s = student_x500s
-        self.x500 = student_x500s[0]
-        self.message = message
-
-    def __str__(self):
-        return "{} for {}: {}".format(self.__class__.__name__, self.x500s, self.message)
-
-
-class FetchError(GradingError):
-    pass
-
-
-class GroupFetchError(GroupGradingError):
-    pass
-
-
-class InvalidSubmissionError(GradingError):
-    pass
-
-
-# TODO: Add grading warnings.
 
 class Grader(object):
     """ Grading Pipeline:
@@ -85,10 +52,20 @@ class Grader(object):
         pass
 
     def pre_grade(self):
-        """This function runs first before any other function
+        """This function runs first before any other grading function
         """
+        with suppress(OSError):
+            os.mkdir(self.write_ups_dir)
 
     def pre_grade_student(self, student):
+        """
+
+        Args:
+            student:
+
+        Raises:
+            InvalidSubmissionError if the student's submission is invalid
+        """
         pass
 
     def grade_student(self, student: Student):
@@ -166,9 +143,9 @@ class Grader(object):
             def do_fetch(student):
                 try:
                     self.fetch_student(student)
-                except FetchError as e:
+                except FetchError as ex:
                     student.done = True
-                    student.add_cmt("{} (credit: 0/100)".format(e.message))
+                    student.add_cmt("{} (credit: 0/100)".format(ex.message))
             list(self.map(do_fetch, self.roster))
 
         if self.GROUP_BASED:
@@ -222,58 +199,3 @@ class Grader(object):
         print("Took {} seconds.".format(int(end_time - start_time)))
         print("Remember to run using the '-m' option to finish the grading.")
 
-
-class GitBasedGrader(Grader):
-    GIT_REPO_URL: str  # ex. "git@github.umn.edu:{}/lab_name.git" Note: '{}' will be replaced by the student's x500.
-
-    def __init__(self):
-        super().__init__()
-        assert self.GIT_REPO_URL != "", "You must set a git repo url"
-
-    def repo_for(self, student):
-        return GitRepo(student.x500, self.GIT_REPO_URL.format(student.x500), cache_dir="repos")
-
-    def fetch_student(self, student):
-        if self.VERBOSE:
-            print("Pulling {}...".format(student))
-        repo = self.repo_for(student)
-        try:
-            repo.pull()
-        except:  # TODO: Fix this except to only catch the correct errors.
-            repo.remove()
-            raise FetchError(student.x500, "{}'s repo is non-existent or you don't have access permissions.".format(student.x500))
-        return repo
-
-    def get_submitting_student(self, group: List[Student]) -> Student:
-        submitting_student = None
-        submitting_student_repo = None
-        for student in group:
-            if os.path.exists(os.path.join("repos", student.x500)):
-                if submitting_student is None:
-                    submitting_student = student
-                    submitting_student_repo = self.repo_for(student)
-                else:
-                    print("Multiple students submitted. :(")
-                    if self.repo_for(student).commit().authored_date > submitting_student_repo.commit().authored_date:
-                        # This one is newer
-                        submitting_student = student
-                        submitting_student_repo = self.repo_for(student)
-                    print("\tSelected {}'s".format(submitting_student))
-        if submitting_student is None:
-            raise GroupFetchError([x.x500 for x in group], "No student in group submitted. :(")
-        return submitting_student
-
-
-class MoodleBasedGrader(Grader):
-    EXTRACT_SUBMISSION = False
-
-    def fetch(self):
-        if not os.path.exists("moodle_dump"):
-            os.mkdir("moodle_dump")
-        input("Make sure you download submissions zip to 'moodle_dump'")
-        moodle_zip = os.listdir("moodle_dump")[0]
-        assert moodle_zip.endswith(".zip"), "Moodle archive must be a zip file."
-
-    # def pre_grade(self):
-    #     moodle_zip = os.listdir("moodle_dump")[0]
-        extract_moodle_zip("moodle_dump/" + moodle_zip, "input", "tmp", self.roster, internal_tarball=self.EXTRACT_SUBMISSION)

@@ -56,6 +56,7 @@ class Writeup(object):
 
 class GradeDB(object):
     Row = namedtuple("Row", ["x500", "score", "msg"])
+
     def __init__(self, questions, writeup_dir, dbpath):
         self.questions = questions
         self.writeup_dir = writeup_dir

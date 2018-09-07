@@ -86,14 +86,18 @@ class GitRepo(object):
         # out = subprocess.check_output(["pygmentize", "-f", "html", "-O", "style=emacs", "-l", "diff"], input=diff.encode(encoding="utf-8")).decode(encoding="utf-8")
         # return "<div class='diff'>{}</div>".format(out)
 
-    def log(self, start, end=None):
-        if end:
+    def log(self, start=None, end=None):
+        if start and end:
             log_string = self.repo.git.log(f'{start}...{end}')
-        else:
+        elif start:
             log_string = self.repo.git.log(f'{start}...')
+        elif end:
+            log_string = self.repo.git.log(f'...{end}')
+        else:
+            log_string = self.repo.git.log()
         return log_string.encode("utf-8", "replace").decode("utf-8")
 
-    def html_log(self, start, end=None):
+    def html_log(self, start=None, end=None):
         return f"<pre><code>{self.log(start, end)}</code></pre>"
 
     def commit(self, *args):
