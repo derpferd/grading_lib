@@ -1,13 +1,11 @@
 #!/usr/bin/python3
-import os
-import re
+import socket
 import subprocess
 import time
-import socket
-from random import randint
-from threading import Lock, Thread
 from queue import Queue
+from random import randint
 from subprocess import DEVNULL
+from threading import Lock, Thread
 
 
 class XV6Output:

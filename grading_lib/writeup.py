@@ -1,22 +1,34 @@
 import json
+from enum import IntEnum
+
+
+class Priority(IntEnum):
+    Top = 1
+    Error = 20
+    Info = 50
+    Debug = 100
+    Bottom = 999
 
 
 class Writeup:
+
     def __init__(self, sections=None):
         if sections is None:
             sections = []
-        self.sections = []
-        for section in sections:
-            self.sections += [{**section, "id": "writeup-section-{}".format(len(self.sections))}]
+        self.sections = [s.copy() for s in sections]
+        self.__sort()
 
     def __add__(self, other):
         return Writeup(self.sections + other.sections)
 
-    def add_section(self, name, text, html=None):
+    def __sort(self):
+        self.sections.sort(key=lambda x: x['priority'])
+
+    def add_section(self, name, priority: Priority, text, html=None):
         if html is None:
             html = "<pre><code>{}</code></pre>".format(text)
-        self.sections += [{"id": "writeup-section-{}".format(len(self.sections)),
-                           "name": name, "text": text, "html": html}]
+        self.sections += [{"name": name, "text": text, "html": html, 'priority': int(priority)}]
+        self.__sort()
 
     def save(self, filename):
         with open(filename + ".json", "w") as fp:

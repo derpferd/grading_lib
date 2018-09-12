@@ -1,7 +1,7 @@
 from __future__ import print_function
 import csv
 import json
-from typing import List, Dict
+from typing import List, Dict, TextIO
 
 import io
 
@@ -11,11 +11,11 @@ class Student(object):
         self.x500 = x500
         self.fname = fname
         self.lname = lname
-        self.score = None
-        self.comment = ""
+        self.score = 0
+        self.comment = ''
         self.done = False
 
-    def get_name(self, sep=" ", reverse=False):
+    def get_name(self, sep=' ', reverse=False):
         name = [self.fname, self.lname]
         if reverse:
             name.reverse()
@@ -27,6 +27,23 @@ class Student(object):
 
     def add_cmt(self, s):
         self.add_comment(s)
+
+    @property
+    def obj(self):
+        return {'x500': self.x500,
+                'fname': self.fname,
+                'lname': self.lname,
+                'score': self.score,
+                'comment': self.comment,
+                'done': self.done}
+
+    @classmethod
+    def from_obj(cls, obj):
+        s = Student(obj['x500'], obj['fname'], obj['lname'])
+        s.score = obj['score']
+        s.comment = obj['comment']
+        s.done = obj['done']
+        return s
 
     def __repr__(self):
         return "<Student {}>".format(self.x500)
@@ -45,16 +62,13 @@ class Roster(object):
     groups: List[StudentGroup]
     group_submitters: Dict[Student, StudentGroup]
 
-    def __init__(self, roster_path="../roster.csv"):
-        self.roster_path = roster_path
+    def __init__(self, roster_path='../roster.csv'):
         self.students = {}
         self.groups = []
         self.group_submitters = {}
-        self.__load_roster()
 
-    def __load_roster(self):
-        self.students = {}
-        with open(self.roster_path, 'r', newline='') as fp:
+        # read in students
+        with open(roster_path, 'r', newline='') as fp:
             roster_reader = csv.DictReader(fp)
             for row in roster_reader:
                 sid = row["x500"].strip()
@@ -64,6 +78,13 @@ class Roster(object):
 
     def __iter__(self):
         return iter(sorted(self.students.values(), key=lambda x: x.x500))
+
+    # def save_json(self, filepath):
+    #     with open(filepath, 'wb') as fp:
+    #         obj = {'students': {sid: student.obj for sid, student in self.students.items()},
+    #                'groups': self.groups,
+    #                'group_submitters': self.}
+    #         json.dump()
 
     def get_not_done(self):
         return filter(lambda x: not x.done, self.students.values())

@@ -1,11 +1,10 @@
 import json
 import os
-import math
 import time
+from collections import namedtuple
 
 from grading_lib import npyscreen
-from .roster import Roster
-from collections import namedtuple
+from grading_lib.db.question import ReviewDB
 
 log = open("log.log", "w")
 
@@ -57,95 +56,46 @@ class Writeup(object):
 class GradeDB(object):
     Row = namedtuple("Row", ["x500", "score", "msg"])
 
-    def __init__(self, questions, writeup_dir, dbpath):
+    def __init__(self, questions, writeup_dir, root):
         self.questions = questions
         self.writeup_dir = writeup_dir
-        self.dbpath = dbpath
+        self.root = root
+
         self.students = []
         self.grades = {}
         self.questions_by_name = {}
+
+        self.db = ReviewDB(root)
         self.__load_or_init()
 
     def __load_or_init(self):
         for question in self.questions:
             self.questions_by_name[question.name] = question
-        if os.path.exists(self.dbpath):
-            obj = json.load(open(self.dbpath, "r"))
-            self.students = obj["students"]
-            self.grades = obj["grades"]
 
         # Add any non added students
         for writeup in sorted(os.listdir(self.writeup_dir)):
             name = os.path.splitext(writeup)[0]
             if name not in self.students:
                 self.students += [name]
-                self.grades[name] = {}
-                for question in self.questions:
-                    self.grades[name][question.name] = 0
 
         self.students.sort()
 
-        # Add any non added questions
-        for student in self.students:
-            for question in self.questions:
-                if question.name not in self.grades[student]:
-                    self.grades[student][question.name] = 0
-
-    def save(self):
-        obj = {"students": self.students,
-               "grades": self.grades}
-        json.dump(obj, open(self.dbpath, "w"))
-
-    def save_as(self, out_file):
-        roster = Roster()
-        for name in self.students:
-            s = roster.students[name]
-            for q_name, grade in self.grades[name].items():
-                question = self.questions_by_name[q_name]
-                if s.score is None:
-                    s.score = 0
-                s.score += grade
-                s.add_cmt(question.get_msg(grade))
-        with open(out_file, "w") as fp:
-            roster.dump(fp)
-
-    def merge(self, org_file, out_file=None):
-        # TODO: make merge work with groups
-        if out_file is None:
-            base, ext = os.path.splitext(org_file)
-            out_file = "{}_merged{}".format(base, ext)
-        roster = Roster()
-        with open(org_file, "r") as fp:
-            roster.load(fp)
-        for name in self.students:
-            s = roster.students[name]
-            for q_name, grade in self.grades[name].items():
-                question = self.questions_by_name[q_name]
-                s.score += grade
-                s.add_cmt(question.get_msg(grade))
-
-        with open(out_file, "w") as fp:
-            roster.dump(fp)
-
     def get_rows(self):
-        return [self.Row(name, sum(self.grades[name].values()), self.get_msg_for(name)) for name in self.students]
+        return [self.Row(name, self.db.get(name).score, self.get_msg_for(name)) for name in self.students]
 
-    def get_grades(self, name):
-        return self.grades[name]
-
-    def get_grade(self, name, question):
-        return self.grades[name][question]
+    def get_grade(self, name: str, question: str) -> int:
+        return self.db.get(name).get(question)
 
     def set_grade(self, x500, q_name, grade):
-        self.grades[x500][q_name] = grade
+        rec = self.db.get(x500)
+        rec.set(q_name, grade)
+        self.db.save(rec)
 
     def get_msg_for(self, name):
-        grades = self.grades[name]
         msgs = []
         for question in self.questions:
-            msgs += [question.get_msg(grades[question.name])]
+            msgs += [question.get_msg(self.get_grade(name, question.name))]
         return "  ".join(msgs)
-        # return "  ".join(map(lambda x: x[1].get_msg(x[0]), zip(grades, self.questions))).lstrip().replace("    ", "  ")
 
     def get_text_for(self, value):
         name = value
@@ -156,7 +106,7 @@ class GradeDB(object):
 
 
 class QuestionGrader(object):
-    def __init__(self, questions, writeup_dir, save_loc):
+    def __init__(self, questions, writeup_dir, save_loc='data/review'):
         self.questions = questions
         self.writeup_dir = writeup_dir
         self.save_loc = save_loc
@@ -179,7 +129,7 @@ class RecordList(npyscreen.MultiLineAction):
     def __init__(self, *args, **keywords):
         super(RecordList, self).__init__(*args, **keywords)
         self.add_handlers({
-            "^S": self.when_merge,
+            # "^S": self.when_merge,
             "^D": self.when_save,
         })
 
@@ -190,19 +140,19 @@ class RecordList(npyscreen.MultiLineAction):
         self.parent.parentApp.getForm('EDITRECORDFM').value = act_on_this[0]
         self.parent.parentApp.switchForm('EDITRECORDFM')
 
-    def when_merge(self, *args, **keywords):
-        # notify_result = npyscreen.notify_ok_cancel("You want to merge?", title='popup')
-        # npyscreen.notify("File: {}".format(the_selected_file), title='Merging')
-        # time.sleep(2)
-        # if notify_result:
-        the_selected_file = npyscreen.selectFile()
-        npyscreen.notify("Merging grades into {} now...".format(the_selected_file), title='Merging')
-        self.parent.parentApp.gradedb.merge(the_selected_file)
-        npyscreen.notify("Finished merging in grades", title='Merged')
-        time.sleep(1)
-        # else:
-        #     npyscreen.notify("Didn't merge", title='Not Merged')
-        #     time.sleep(.5)
+    # def when_merge(self, *args, **keywords):
+    #     # notify_result = npyscreen.notify_ok_cancel("You want to merge?", title='popup')
+    #     # npyscreen.notify("File: {}".format(the_selected_file), title='Merging')
+    #     # time.sleep(2)
+    #     # if notify_result:
+    #     the_selected_file = npyscreen.selectFile()
+    #     npyscreen.notify("Merging grades into {} now...".format(the_selected_file), title='Merging')
+    #     self.parent.parentApp.gradedb.merge(the_selected_file)
+    #     npyscreen.notify("Finished merging in grades", title='Merged')
+    #     time.sleep(1)
+    #     # else:
+    #     #     npyscreen.notify("Didn't merge", title='Not Merged')
+    #     #     time.sleep(.5)
 
     def when_save(self, *args, **keywords):
         the_selected_file = npyscreen.selectFile()
@@ -252,12 +202,14 @@ class EditRecord(npyscreen.ActionForm):
             record = self.parentApp.gradedb.get_text_for(self.value)
             self.name = "Grading for %s" % self.value
             self.writeup.values = record.split("\n")
-            grades = self.parentApp.gradedb.get_grades(self.value)
-            for q_name, grade in grades.items():
+            for q_name in self.parentApp.gradedb.questions_by_name.keys():
+                grade = self.parentApp.gradedb.get_grade(self.value, q_name)
                 if grade == 0:
                     self.questions[q_name].value = ""
                 else:
                     self.questions[q_name].value = str(grade)
+            # grades = self.parentApp.gradedb.get_grades(self.value)
+            # for q_name, grade in grades.items():
             # self.record_id          = record[0]
             # self.wgLastName.value   = record[1]
             # self.wgOtherNames.value = record[2]
@@ -282,7 +234,7 @@ class EditRecord(npyscreen.ActionForm):
         # grades = [int("0" + x.value) for x in self.questions]
         for q_name, question in self.questions.items():
             self.parentApp.gradedb.set_grade(self.value, q_name, int("0" + question.value))
-        self.parentApp.gradedb.save()
+        # self.parentApp.gradedb.save()
 
         # if self.record_id: # We are editing an existing record
         #     self.parentApp.gradedb.update_record(self.record_id,

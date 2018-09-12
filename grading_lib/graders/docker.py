@@ -6,74 +6,77 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from typing import List
 
-from .git import GitBasedGrader
-from .. import Question, Writeup, PartialCreditQuestion, QuestionGrader
-from ..docker import DockerGrader, DockerTimeoutException
+from grading_lib.writeup import Priority
+from .base import Grader
+from .. import Question, Writeup
+from ..docker import DockerRunner, DockerTimeoutException
 from ..roster import Student
 
 
-class SimpleDockerGitGrader(GitBasedGrader):
-    GIT_REPO_URL = 'git@github.umn.edu:{}/vigenere.git'
-    GIT_LAST_NON_STUDENT_COMMIT = '2fda232'
-    GIT_EXCLUDE = ['DECODED/*', 'ENCODED/*']
+class SimpleDockerGrader(Grader):
+    @staticmethod
+    @abstractmethod
+    def docker_image_name() -> str:
+        ...
 
-    DOCKER_IMAGE_NAME = 'umd_cs_4821_vigenere'
-    DOCKER_IMAGE_BUILD_DIR = 'testing_img'
+    @staticmethod
+    @abstractmethod
+    def sources() -> List[str]:
+        ...
 
-    THREAD_SAFE = False
-    GROUP_BASED = False
+    @staticmethod
+    def docker_image_build_dir() -> str:
+        return 'testing_img'
 
-    VERBOSE = True
-    TIMEOUT_SEC = None  # Defaults to 60 sec
+    @staticmethod
+    def docker_timeout_sec() -> int:
+        return 60
 
-    SOURCES: list
+    @classmethod
+    def source_paths(cls, student: Student) -> List[Path]:
+        return [Path("repos", student.x500, file) for file in cls.sources()]
 
-    def __init__(self):
-        assert getattr(self, "SOURCES", None), "SOURCES is not set"
-        assert isinstance(getattr(self, "SOURCES"), list), "SOURCES must be a list"
-
-        super().__init__()
-
-    def source_paths(self, student: Student) -> List[Path]:
-        return [Path("repos", student.x500, file) for file in self.SOURCES]
-
-    def pre_grade(self):
-        if self.VERBOSE:
+    @classmethod
+    def pre_grade(cls):
+        if cls.VERBOSE:
             print("Creating docker image...")
-        DockerGrader.build_docker_image(self.DOCKER_IMAGE_NAME, self.DOCKER_IMAGE_BUILD_DIR)
+        DockerRunner.build_docker_image(cls.docker_image_name(), cls.docker_image_build_dir())
 
         super().pre_grade()
 
-    def grade_student(self, student: Student):
-        if self.VERBOSE:
+    @classmethod
+    def grade_student(cls, student: Student):
+        if cls.VERBOSE:
             print("Grading {}...".format(student.x500))
         student.score = 0
-        grading_writeup = Writeup()
+        writeup = Writeup()
 
-        self.grade_code(student, grading_writeup)
-        writeup = self.create_write_up(student, grading_writeup)
+        cls.grade_code(student, writeup)
+        cls.add_sections_to_write_up(student, writeup)
 
-        writeup.save(os.path.join(self.write_ups_dir, student.x500))
+        writeup.save(os.path.join(cls.write_ups_dir(), student.x500))
 
-    def grade_code(self, student: Student, writeup: Writeup):
-        grader = DockerGrader(self.DOCKER_IMAGE_NAME, default_timeout=self.TIMEOUT_SEC)
+    @classmethod
+    def grade_code(cls, student: Student, writeup: Writeup):
+        grader = DockerRunner(cls.docker_image_name(), default_timeout=cls.docker_timeout_sec())
 
-        if self.repo_for(student).is_branchless:
+        if cls.repo_for(student).is_branchless:
             student.add_cmt(Question('repo', 100, "Couldn't find repository.").get_msg(0))
             return
 
-        for path in self.source_paths(student):
+        for path in cls.source_paths(student):
             if not path.exists():
                 student.add_cmt(Question(path.name, 100, f"Couldn't find {path.name}").get_msg(0))
                 return
 
         try:
-            result = grader.run({path: path.name for path in self.source_paths(student)})
+            result = grader.run({path: path.name for path in cls.source_paths(student)})
         except DockerTimeoutException:
             student.add_cmt("Program timed out (credit 0/100)")
             return
 
         writeup.add_section("Test output",
+                            Priority.Info - 1,
                             f"exit code: '{result.returncode}'\n"
                             f"stdout: '{result.stdout.decode('utf-8')}'\n"
                             f"stderr: '{result.stderr.decode('utf-8')}'")
@@ -91,29 +94,17 @@ class SimpleDockerGitGrader(GitBasedGrader):
         test_correct, test_total = map(int, test_counts[0])
         student.score = (test_correct * 100) // test_total
 
-    def create_write_up(self, student, grading_writeup):
-        writeup = Writeup()
-        writeup.add_section("Grades", text="Grade so far: {}\nFeedback: {}".format(student.score, student.comment))
-        writeup += grading_writeup
-        self.add_git_diff_section(student, writeup)
-        self.add_git_log_section(student, writeup)
+    @classmethod
+    def add_sections_to_write_up(cls, student: Student, writeup: Writeup):
+        super().add_sections_to_write_up(student, writeup)
+        writeup.add_section("Grades", Priority.Error, text="Grade so far: {}\nFeedback: {}".format(student.score, student.comment))
 
-        for source_path in self.source_paths(student):
+        for source_path in cls.source_paths(student):
             source_code = f'No {source_path.name} found :('
             if os.path.exists(source_path):
                 source_code = open(str(source_path), 'r').read()
 
-            writeup.add_section(source_path.name, source_code)
-
-        return writeup
-
-    @property
-    def manual_questions(self):
-        return [PartialCreditQuestion("Added Partial Credit", "Partial Credit")]
-
-    def manual_grade(self):
-        grader = QuestionGrader(self.manual_questions, self.write_ups_dir, os.path.join(self.OUT_DIR, "q_grading.sav"))
-        grader.grade()
+            writeup.add_section(source_path.name, Priority.Debug + 1, source_code)
 
     @abstractmethod
     def process_output(self, student: Student, result: CompletedProcess):

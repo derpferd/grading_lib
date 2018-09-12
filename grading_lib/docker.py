@@ -9,13 +9,14 @@ from typing import Dict, Union
 
 import docker
 import requests
+from docker.models.containers import Container
 
 
 class DockerTimeoutException(Exception):
     pass
 
 
-class DockerGrader:
+class DockerRunner:
     CPUS = 2  # Protect against cpu usage attacks
     MAX_DISK = "100m"  # Protect against filling up the disk
     MEMORY_LIMIT = "300m"  # Protect against memory usage attacks
@@ -42,15 +43,13 @@ class DockerGrader:
 
         client = docker.from_env()
         container = client.containers.create(self.image,
-                             self.cmd,
-                             mem_limit=DockerGrader.MEMORY_LIMIT,
-                             pids_limit=DockerGrader.PIDS_LIMIT,
-                             cpu_period=DockerGrader.CPU_PERIOD,
-                             cpu_quota=int(DockerGrader.CPU_PERIOD * DockerGrader.CPUS),
-                             tmpfs={
-                                 '/foo': f'size={DockerGrader.MAX_DISK},exec'
-                             },
-                             detach=True, )
+                                             self.cmd,
+                                             mem_limit=DockerRunner.MEMORY_LIMIT,
+                                             pids_limit=DockerRunner.PIDS_LIMIT,
+                                             cpu_period=DockerRunner.CPU_PERIOD,
+                                             cpu_quota=int(DockerRunner.CPU_PERIOD * DockerRunner.CPUS),
+                                             tmpfs={'/foo': f'size={DockerRunner.MAX_DISK},exec'},
+                                             detach=True, )  # type: Container
 
         container.put_archive(path='/tmp', data=self.create_file_bundle(files))
         container.start()

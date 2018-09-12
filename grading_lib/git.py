@@ -103,11 +103,14 @@ class GitRepo(object):
     def commit(self, *args):
         return self.repo.commit(*args)
 
-    def pull(self, branch="master"):
+    def pull(self, branch="master", progress: git.RemoteProgress=None):
         assert git.Remote(self.repo, "origin") in self.repo.remotes
 
         origin = self.repo.remotes["origin"]
-        origin.pull(branch)
+        if progress:
+            origin.pull(branch)
+        else:
+            origin.pull(branch, progress=progress)
 
     def remove(self):
         self._repo = None

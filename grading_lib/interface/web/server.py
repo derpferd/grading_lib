@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, render_template, redirect
-from ..question import GradeDB
+from ...question import GradeDB
 app = Flask(__name__)
 
 
