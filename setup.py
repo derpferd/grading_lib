@@ -11,7 +11,7 @@ setup(
     license='MIT',
     packages=find_packages(),
     package_data={
-        'grading_lib.interface': [
+        'grading_lib.interface.web': [
             'static/*',
             'static/highlight/*',
             'static/highlight/styles/*',
