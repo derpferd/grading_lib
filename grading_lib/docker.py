@@ -62,10 +62,15 @@ class DockerRunner:
         if results['Error']:
             raise Exception(f'HAD ERROR :{results["Error"]}')
 
-        return CompletedProcess(args=self.cmd,
+        result = CompletedProcess(args=self.cmd,
                                 returncode=results['StatusCode'],
                                 stdout=container.logs(stdout=True, stderr=False),
                                 stderr=container.logs(stdout=False, stderr=True))
+
+        container.stop()
+        container.remove()
+
+        return result
         
     def create_file_bundle(self, files: Dict[Union[str, Path], Union[str, Path]]) -> bytes:
         archive = io.BytesIO()
