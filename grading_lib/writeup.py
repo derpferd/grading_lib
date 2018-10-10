@@ -5,6 +5,7 @@ from enum import IntEnum
 class Priority(IntEnum):
     Top = 1
     Error = 20
+    Answers = 25
     Info = 50
     Debug = 100
     Bottom = 999
