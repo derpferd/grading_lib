@@ -32,6 +32,10 @@ class SimpleDockerGrader(Grader):
     def docker_timeout_sec() -> int:
         return 60
 
+    @staticmethod
+    def docker_disk_cap_mb() -> int:
+        return 100
+
     @classmethod
     def source_paths(cls, student: Student) -> List[Path]:
         return [Path("repos", student.x500, file) for file in cls.sources()]
@@ -59,6 +63,7 @@ class SimpleDockerGrader(Grader):
     @classmethod
     def grade_code(cls, student: Student, writeup: Writeup):
         grader = DockerRunner(cls.docker_image_name(), default_timeout=cls.docker_timeout_sec())
+        grader.MAX_DISK = f'{cls.docker_disk_cap_mb()}m'
 
         if cls.repo_for(student).is_branchless:
             student.add_cmt(Question('repo', 100, "Couldn't find repository.").get_msg(0))
@@ -88,7 +93,7 @@ class SimpleDockerGrader(Grader):
                 student.add_cmt(f"Error with code {result.returncode} (credit 0/100)")
             return
 
-        test_counts = re.findall(b'You passed ([0-9]{1,3}) out of ([0-9]{1,3})', result.stdout)
+        test_counts = re.findall(b'You passed ([0-9]{1,5}) out of ([0-9]{1,5})', result.stdout)
 
         assert len(test_counts) == 1
         test_correct, test_total = map(int, test_counts[0])

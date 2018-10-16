@@ -44,11 +44,11 @@ class DockerRunner:
         client = docker.from_env()
         container = client.containers.create(self.image,
                                              self.cmd,
-                                             mem_limit=DockerRunner.MEMORY_LIMIT,
-                                             pids_limit=DockerRunner.PIDS_LIMIT,
-                                             cpu_period=DockerRunner.CPU_PERIOD,
-                                             cpu_quota=int(DockerRunner.CPU_PERIOD * DockerRunner.CPUS),
-                                             tmpfs={'/foo': f'size={DockerRunner.MAX_DISK},exec'},
+                                             mem_limit=self.MEMORY_LIMIT,
+                                             pids_limit=self.PIDS_LIMIT,
+                                             cpu_period=self.CPU_PERIOD,
+                                             cpu_quota=int(self.CPU_PERIOD * self.CPUS),
+                                             tmpfs={'/foo': f'size={self.MAX_DISK},exec'},
                                              detach=True, )  # type: Container
 
         container.put_archive(path='/tmp', data=self.create_file_bundle(files))
@@ -57,15 +57,23 @@ class DockerRunner:
         try:
             results = container.wait(timeout=timeout)
         except requests.exceptions.ReadTimeout:  # They timed out.
+            try:
+                container.stop()
+            except:
+                pass
+            try:
+                container.remove()
+            except:
+                pass
             raise DockerTimeoutException
 
         if results['Error']:
             raise Exception(f'HAD ERROR :{results["Error"]}')
 
         result = CompletedProcess(args=self.cmd,
-                                returncode=results['StatusCode'],
-                                stdout=container.logs(stdout=True, stderr=False),
-                                stderr=container.logs(stdout=False, stderr=True))
+                                  returncode=results['StatusCode'],
+                                  stdout=container.logs(stdout=True, stderr=False),
+                                  stderr=container.logs(stdout=False, stderr=True))
 
         container.stop()
         container.remove()
