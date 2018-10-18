@@ -10,10 +10,11 @@ log = open("log.log", "w")
 
 
 class Question(object):
-    def __init__(self, name, points, incorrect_msg):
+    def __init__(self, name, points, incorrect_msg, help_text=""):
         self.name = name
         self.points = points
         self.incorrect_msg = incorrect_msg
+        self.help_text = help_text
 
     def get_msg(self, points, custom_message=None):
         if points == self.points:
@@ -26,8 +27,8 @@ class Question(object):
 
 
 class PartialCreditQuestion(Question):
-    def __init__(self, name, msg=None):
-        super().__init__(name, 100, msg)
+    def __init__(self, name, msg=None, help_text=""):
+        super().__init__(name, 100, msg, help_text)
 
     def get_msg(self, points, custom_message=None):
         if points == 0:
