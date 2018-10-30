@@ -56,13 +56,13 @@ class DockerRunner:
 
         try:
             results = container.wait(timeout=timeout)
-        except requests.exceptions.ReadTimeout:  # They timed out.
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):  # They timed out.
             try:
                 container.stop()
             except:
                 pass
             try:
-                container.remove()
+                container.remove(force=True)
             except:
                 pass
             raise DockerTimeoutException
