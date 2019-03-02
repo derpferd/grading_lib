@@ -11,6 +11,7 @@ from .base import Grader
 from .. import Question, Writeup
 from ..docker import DockerRunner, DockerTimeoutException
 from ..roster import Student
+from .git import GitGrader
 
 
 class SimpleDockerGrader(Grader):
@@ -65,9 +66,10 @@ class SimpleDockerGrader(Grader):
         grader = DockerRunner(cls.docker_image_name(), default_timeout=cls.docker_timeout_sec())
         grader.MAX_DISK = f'{cls.docker_disk_cap_mb()}m'
 
-        if cls.repo_for(student).is_branchless:
-            student.add_cmt(Question('repo', 100, "Couldn't find repository.").get_msg(0))
-            return
+        if isinstance(cls, GitGrader):
+            if cls.repo_for(student).is_branchless:
+                student.add_cmt(Question('repo', 100, "Couldn't find repository.").get_msg(0))
+                return
 
         for path in cls.source_paths(student):
             if not path.exists():
@@ -86,18 +88,7 @@ class SimpleDockerGrader(Grader):
                             f"stdout: '{result.stdout.decode('utf-8')}'\n"
                             f"stderr: '{result.stderr.decode('utf-8')}'")
 
-        if result.returncode:  # non zero exit code
-            if result.returncode == 2:
-                student.add_cmt("Compile Error (credit 0/100)")
-            else:
-                student.add_cmt(f"Error with code {result.returncode} (credit 0/100)")
-            return
-
-        test_counts = re.findall(b'You passed ([0-9]{1,5}) out of ([0-9]{1,5})', result.stdout)
-
-        assert len(test_counts) == 1
-        test_correct, test_total = map(int, test_counts[0])
-        student.score = (test_correct * 100) // test_total
+        cls.process_output(student, result)
 
     @classmethod
     def add_sections_to_write_up(cls, student: Student, writeup: Writeup):
@@ -111,7 +102,8 @@ class SimpleDockerGrader(Grader):
 
             writeup.add_section(source_path.name, Priority.Debug + 1, source_code)
 
+    @classmethod
     @abstractmethod
-    def process_output(self, student: Student, result: CompletedProcess):
+    def process_output(cls, student: Student, result: CompletedProcess):
         """This function should add comments and the score to the student based on the result."""
         ...

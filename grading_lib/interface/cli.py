@@ -13,6 +13,7 @@ from ..roster import Roster, Student
 
 class Context:
     grader: Grader
+    debug: bool = False
     student: str = None
     all_students: Dict[str, Student] = None
 
@@ -49,7 +50,8 @@ def run(grader_cls: Type[Grader]):
     @click.option('-r', '--roster', default='../roster.csv', type=click.Path(exists=True),
                   help='The filepath of the roster to use.')
     @click.option('-v', '--verbose', is_flag=True, help='Print Debug')
-    def cli(student, roster, verbose, groups=None):
+    @click.option('-d', '--debug', is_flag=True, help='Run in Debug Mode')
+    def cli(student, roster, verbose, debug, groups=None):
         """This is the command line interface for Jonathan's automatic grading system.
 
         To properly grade the students work make sure to run the commands in the following order.
@@ -73,6 +75,7 @@ def run(grader_cls: Type[Grader]):
             context.all_students = grader.roster.students
             grader.roster.students = {student: grader.roster.students[student]}
 
+        context.debug = debug
         context.grader = grader
 
     if grader_cls.GROUP_BASED:
@@ -114,17 +117,28 @@ def run(grader_cls: Type[Grader]):
             context.student = group.submitter
 
         fetched_students = grader.fetch_db().students.values()
-
         if context.student:
             fetched_students = [grader.fetch_db().get(context.student)]
 
         grader.pre_grade()
 
-        with Pool(grader_cls.PRE_GRADE_THREADS) as pool:
-            pool.map(grader_cls.pre_grade_student_wrapper, fetched_students)
+        if context.debug:
+            for student in fetched_students:
+                grader_cls.pre_grade_student_wrapper(student)
+        else:
+            with Pool(grader_cls.PRE_GRADE_THREADS) as pool:
+                pool.map(grader_cls.pre_grade_student_wrapper, fetched_students)
 
-        with Pool(grader_cls.GRADE_THREADS) as pool:
-            pool.map(grader_cls.grade_wrapper, fetched_students)
+        pre_graded_students = grader.grade_db().students.values()
+        if context.student:
+            pre_graded_students = [grader.fetch_db().get(context.student)]
+
+        if context.debug:
+            for student in pre_graded_students:
+                grader_cls.grade_wrapper(student)
+        else:
+            with Pool(grader_cls.GRADE_THREADS) as pool:
+                pool.map(grader_cls.grade_wrapper, pre_graded_students)
 
         grader.post_grade()
 

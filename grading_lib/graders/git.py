@@ -68,7 +68,7 @@ class GitGrader(Grader):
                     submitting_student_repo = cls.repo_for(student)
                 else:
                     print("Multiple students submitted. :(")
-                    if self.repo_for(student).commit().authored_date > submitting_student_repo.commit().authored_date:
+                    if cls.repo_for(student).commit().authored_date > submitting_student_repo.commit().authored_date:
                         # This one is newer
                         submitting_student = student
                         submitting_student_repo = cls.repo_for(student)
