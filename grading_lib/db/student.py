@@ -68,8 +68,10 @@ class StudentDB:
     def __init__(self, root_dir: str):
         self.root_dir = root_dir
 
-        if not os.path.exists(root_dir):
+        try:
             os.mkdir(root_dir)
+        except FileExistsError:
+            pass  # This is ok, we just want to make sure the file exists.
 
     @property
     def students(self) -> Dict[str, Student]:
