@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='grading_lib',
-    version='3.0.3',
+    version='3.0.4',
     description='A bunch of random grading functions',
     url='https://github.com/derpferd/grading_lib.git',
     author='Jonathan Beaulieu',
