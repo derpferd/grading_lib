@@ -147,7 +147,10 @@ def run(grader_cls: Type[Grader]):
                 submitter = grader.grade_db().get(group.submitter)
                 for member in group.members:
                     if not member == group.submitter:
-                        student = context.all_students[member]
+                        if context.all_students:
+                            student = context.all_students[member]
+                        else:
+                            student = grader.roster.students[member]
                         student.score = submitter.score
                         student.comment = submitter.comment
                         grader.grade_db().save(student)
