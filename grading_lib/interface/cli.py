@@ -94,7 +94,7 @@ def run(grader_cls: Type[Grader]):
         print("Pre fetching...")
         grader.pre_fetch()
         print("Fetching...")
-        grader_cls.fetch()
+        grader.fetch()
 
         with Pool(grader_cls.FETCH_THREADS) as pool:
             pool.map(grader_cls.fetch_student_wrapper, grader.roster)

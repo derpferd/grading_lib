@@ -46,7 +46,6 @@ class Grader(ABC):
     def pre_fetch(self):
         pass
 
-    @classmethod
     @abstractmethod
     def fetch(self):
         pass

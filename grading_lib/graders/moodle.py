@@ -16,5 +16,6 @@ class MoodleGrader(Grader):
 
         extract_moodle_zip("moodle_dump/" + moodle_zip, "input", "tmp", self.roster, internal_tarball=self.EXTRACT_SUBMISSION)
 
-    def fetch_student(self, student):
+    @classmethod
+    def fetch_student(cls, student):
         pass

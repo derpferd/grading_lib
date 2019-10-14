@@ -17,7 +17,8 @@ class CanvaseGrader(Grader):
 
         extract_canvas_zip("canvas_dump/" + canvas_zip, "input", "tmp", self.roster, internal_tarball=self.EXTRACT_SUBMISSION)
 
-    def fetch_student(self, student):
+    @classmethod
+    def fetch_student(cls, student):
         pass
 
     def export_grades(self, output_file):
