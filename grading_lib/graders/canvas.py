@@ -5,7 +5,7 @@ from .base import Grader
 from .. import extract_canvas_zip
 
 
-class CanvaseGrader(Grader):
+class CanvasGrader(Grader):
     EXTRACT_SUBMISSION = False
 
     def fetch(self):

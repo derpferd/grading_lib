@@ -13,6 +13,7 @@ from grading_lib.interface import cli
 
 from grading_lib.graders.errors import *
 from grading_lib.graders.base import Grader
+from grading_lib.graders.canvas import CanvasGrader
 from grading_lib.graders.docker import SimpleDockerGrader
 from grading_lib.graders.git import GitGrader
 from grading_lib.graders.moodle import MoodleGrader
