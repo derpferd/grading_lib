@@ -83,7 +83,7 @@ class Roster(object):
                 sid = row['x500'].strip()
                 fname = row['first name'].strip()
                 lname = row['last name'].strip()
-                external_id = row.get('id', None)
+                external_id = row['ID'].strip()
                 if isinstance(external_id, str):
                     external_id = external_id.strip()
                 extra_tags = {}
@@ -153,8 +153,16 @@ class Roster(object):
             writer.writerow(row)
 
     def dump_canvas(self, f):
-        # TODO: write this function. See above `dump_moodle` function for basic idea.
-        pass
+        writer = csv.DictWriter(f, ['Student Name', 'ID', 'Section', 'Score'])
+        writer.writeheader()
+        for student in sorted(self, key=lambda x: x.x500):
+            row = {"Student Name": student.fname + " " + student.lname,
+                   "ID": student.external_id,
+                   "Section": 1,
+                   "Score": student.score}
+            if not student.score:
+                row["Score"] = 0
+            writer.writerow(row)
 
     def dump(self, f, format: OutputFormat = OutputFormat.MOODLE):
         if format == OutputFormat.MOODLE:
