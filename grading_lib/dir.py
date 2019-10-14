@@ -38,12 +38,28 @@ def check_if_dir_contains_files(basedir, otherdir, match_file_names=False):
     
     if match_file_names:
         # TODO: write this
-        pass
+        raise NotImplementedError('Matching filenames isn\'t implemented yet')
     else:
         for h in org_hashes.values():
             if h not in other_hashes.values():
                 return False
     return True
+
+
+def number_of_same_files_in_dirs(basedir, otherdir, match_file_names=False):
+    org_hashes = get_hashes_for_dir(basedir)
+    other_hashes = get_hashes_for_dir(otherdir, recurive=True)
+
+    same_files = 0
+
+    if match_file_names:
+        # TODO: write this
+        raise NotImplementedError('Matching filenames isn\'t implemented yet')
+    else:
+        for h in org_hashes.values():
+            if h in other_hashes.values():
+                same_files += 1
+    return same_files
 
 
 def hard_remove_dir(path):
