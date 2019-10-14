@@ -1,16 +1,18 @@
 from __future__ import print_function
+import io
 import csv
 import json
+from enum import Enum
 from typing import List, Dict, TextIO
-
-import io
 
 
 class Student(object):
-    def __init__(self, x500, fname, lname):
+    def __init__(self, x500, fname, lname, external_id=None, extra_tags: Dict[str, str]=None):
         self.x500 = x500
         self.fname = fname
         self.lname = lname
+        self.external_id = external_id
+        self.extra_tags = extra_tags
         self.score = 0
         self.comment = ''
         self.done = False
@@ -33,13 +35,15 @@ class Student(object):
         return {'x500': self.x500,
                 'fname': self.fname,
                 'lname': self.lname,
+                'external_id': self.external_id,
+                'extra_tags': self.extra_tags,
                 'score': self.score,
                 'comment': self.comment,
                 'done': self.done}
 
     @classmethod
     def from_obj(cls, obj):
-        s = Student(obj['x500'], obj['fname'], obj['lname'])
+        s = Student(obj['x500'], obj['fname'], obj['lname'], obj.get('external_id', None), obj.get('extra_tags', None))
         s.score = obj['score']
         s.comment = obj['comment']
         s.done = obj['done']
@@ -57,6 +61,11 @@ class StudentGroup(list):
         super().__init__(students)
 
 
+class OutputFormat(Enum):
+    MOODLE = 0
+    CANVAS = 1
+
+
 class Roster(object):
     students: Dict[str, Student]  # sid -> student
     groups: List[StudentGroup]
@@ -71,10 +80,17 @@ class Roster(object):
         with open(roster_path, 'r', newline='') as fp:
             roster_reader = csv.DictReader(fp)
             for row in roster_reader:
-                sid = row["x500"].strip()
-                fname = row["first name"].strip()
-                lname = row["last name"].strip()
-                self.students[sid] = Student(sid, fname, lname)
+                sid = row['x500'].strip()
+                fname = row['first name'].strip()
+                lname = row['last name'].strip()
+                external_id = row.get('id', None)
+                if isinstance(external_id, str):
+                    external_id = external_id.strip()
+                extra_tags = {}
+                for key, value in row.items():
+                    if key not in {'x500', 'first name', 'last name', 'id'}:
+                        extra_tags[key] = value.strip()
+                self.students[sid] = Student(sid, fname, lname, external_id, extra_tags)
 
     def __iter__(self):
         return iter(sorted(self.students.values(), key=lambda x: x.x500))
@@ -99,6 +115,12 @@ class Roster(object):
                     return sid
         return None
 
+    def get_student_id_by_external_id(self, external_id):
+        for sid, student in self.students.items():
+            if student.external_id == external_id:
+                return sid
+        return None
+
     def load_groups(self, filename: str):
         self.groups = []  # type: List[StudentGroup]
         with open(filename, "r") as fp:
@@ -119,7 +141,7 @@ class Roster(object):
             self.students[sid].score = score
             self.students[sid].comment = comments
 
-    def dump(self, f):
+    def dump_moodle(self, f):
         writer = csv.DictWriter(f, ['Id', 'Score', 'Comments'])
         writer.writeheader()
         for student in sorted(self, key=lambda x: x.x500):
@@ -129,29 +151,23 @@ class Roster(object):
             if not student.score:
                 row["Score"] = 0
             writer.writerow(row)
-        # s = "Id, Score, Comments\n"
-        # for student in sorted(self, key=lambda x: x.x500):
-        #     if student.score:
-        #         s += "{}@umn.edu, {}, \"{}\"\n".format(student.x500, student.score, student.comment)
-        #     else:
-        #         s += "{}@umn.edu, 0, \"{}\"\n".format(student.x500, student.comment)
-        # return s
 
-    def dumps(self):
+    def dump_canvas(self, f):
+        # TODO: write this function. See above `dump_moodle` function for basic idea.
+        pass
+
+    def dump(self, f, format: OutputFormat = OutputFormat.MOODLE):
+        if format == OutputFormat.MOODLE:
+            return self.dump_moodle(f)
+        elif format == OutputFormat.CANVAS:
+            return self.dump_canvas(f)
+        raise ValueError(f'Invalid format: {format}')
+
+    def dumps(self, format: OutputFormat = OutputFormat.MOODLE):
         f = io.StringIO()
-        self.dump(f)
+        self.dump(f, format)
         return f.getvalue()
 
-    def export_grades(self, filepath):
+    def export_grades(self, filepath, format: OutputFormat = OutputFormat.MOODLE):
         with open(filepath, "w") as fp:
-            self.dump(fp)
-        # # TODO: use csv lib to export
-        # with open(filepath, "w") as fp:
-        #     fp.write("Id, Score, Comments\n")
-        #     for student in sorted(self, key=lambda x: x.x500):
-        #         if student.score:
-        #             fp.write("{}@umn.edu, {}, \"{}\"\n".format(student.x500, student.score, student.comment))
-        #         else:
-        #             fp.write("{}@umn.edu, 0, \"{}\"\n".format(student.x500, student.comment))
-        #             if print_unset:
-        #                 print("{} has no grade".format(student.x500))
+            self.dump(fp, format)

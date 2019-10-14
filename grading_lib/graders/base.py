@@ -95,6 +95,9 @@ class Grader(ABC):
         """
         pass
 
+    def export_grades(self, output_file):
+        self.roster.export_grades(output_file)
+
     @property
     def manual_questions(self) -> List[Question]:
         return []

@@ -193,7 +193,7 @@ def run(grader_cls: Type[Grader]):
             for question in context.grader.manual_questions:
                 s.add_cmt(question.get_msg(review_rec.get(question.name)))
 
-        context.grader.roster.export_grades(output_file)
+        context.grader.export_grades(output_file)
 
     @cli.command(short_help="Start the server (To be implemented)")
     def serve():

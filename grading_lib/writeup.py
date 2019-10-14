@@ -12,7 +12,6 @@ class Priority(IntEnum):
 
 
 class Writeup:
-
     def __init__(self, sections=None):
         if sections is None:
             sections = []
