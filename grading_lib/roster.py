@@ -158,6 +158,7 @@ class Roster(object):
         for student in sorted(self, key=lambda x: x.x500):
             row = {"Student Name": student.fname + " " + student.lname,
                    "ID": student.external_id,
+                   "SIS Login ID": "{}@umn.edu".format(student.x500),
                    "Section": 1,
                    "Score": student.score}
             if not student.score:
