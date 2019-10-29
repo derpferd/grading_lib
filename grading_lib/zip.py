@@ -105,7 +105,7 @@ def extract_canvas_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
                 print(sid)
             else:
                 print(zipdir, subdir)
-                submission_name = os.listdir(os.path.join(zipdir, subdir))[0]
+                submission_name = subdir
                 submissionpath = os.path.join(zipdir, subdir, submission_name)
 
                 ext = ""
