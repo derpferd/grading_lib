@@ -19,6 +19,7 @@ from .interface.web.server import WebGrader
 def run(grader: Grader):
     """This will parse command line args and run needed steps."""
 
+    print('honk')
     parser = argparse.ArgumentParser()
     if grader.GROUP_BASED:
         parser.add_argument("-g", "--groups", help="The filepath of the file containing the groups", type=str,
