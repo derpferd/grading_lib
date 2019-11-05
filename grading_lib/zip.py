@@ -99,7 +99,7 @@ def extract_canvas_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
                 try:
                     with tarfile.open(tarpath, mode="r:*") as tf:
                         tf.extractall(sopath)
-                except tarfile.ReadError:
+                except:
                     print("Submission was not a valid tarball.")
                 print(sid)
             else:
