@@ -107,6 +107,7 @@ def run(grader: Grader):
     list(grader.map(do_pre_grade, grader.roster.get_not_done()))
 
     def do_grade(student):
+        print('in do_grade')
         grader.grade_student(student)
 
     list(grader.map(do_grade, grader.roster.get_not_done()))
