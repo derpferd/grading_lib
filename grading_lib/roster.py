@@ -153,7 +153,7 @@ class Roster(object):
             writer.writerow(row)
 
     def dump_canvas(self, f):
-        writer = csv.DictWriter(f, ['Student Name', 'ID', 'Section', 'Score'])
+        writer = csv.DictWriter(f, ['Student Name', 'ID', 'SIS Login ID', 'Section', 'Score'])
         writer.writeheader()
         for student in sorted(self, key=lambda x: x.x500):
             row = {"Student Name": student.fname + " " + student.lname,
