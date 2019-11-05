@@ -103,8 +103,8 @@ def extract_canvas_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
                     print("Submission was not a valid tarball.")
                 print(sid)
             else:
-                submission_name = os.listdir(os.path.join(zipdir, subdir))[0]
-                submissionpath = os.path.join(zipdir, subdir, submission_name)
+                submission_name = subdir
+                submissionpath = os.path.join(zipdir, submission_name)
 
                 ext = ""
                 if "." in submission_name:
