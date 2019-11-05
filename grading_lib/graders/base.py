@@ -116,7 +116,6 @@ class Grader(ABC):
     @classmethod
     def main(cls):
         from ..interface import cli
-        print('in main')
         cli.run(cls)
 
     @classmethod

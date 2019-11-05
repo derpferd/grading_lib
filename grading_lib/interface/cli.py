@@ -45,7 +45,7 @@ def process_groups(context: Context):
 
 def run(grader_cls: Type[Grader]):
     context = Context()
-
+    print('in run')
     @click.option('-s', '--student', type=str, help='Perform work on a single student by their x500')
     @click.option('-r', '--roster', default='../roster.csv', type=click.Path(exists=True),
                   help='The filepath of the roster to use.')
