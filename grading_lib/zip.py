@@ -101,7 +101,6 @@ def extract_canvas_zip(zippath, outpath, tmpdir, roster: Roster, internal_tarbal
                         tf.extractall(sopath)
                 except:
                     print("Submission was not a valid tarball.")
-                print(sid)
             else:
                 submission_name = subdir
                 submissionpath = os.path.join(zipdir, submission_name)
