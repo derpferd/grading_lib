@@ -45,7 +45,6 @@ def process_groups(context: Context):
 
 def run(grader_cls: Type[Grader]):
     context = Context()
-    print('in cli.py/run()')
     @click.option('-s', '--student', type=str, help='Perform work on a single student by their x500')
     @click.option('-r', '--roster', default='../roster.csv', type=click.Path(exists=True),
                   help='The filepath of the roster to use.')
@@ -85,7 +84,6 @@ def run(grader_cls: Type[Grader]):
 
     @cli.command(short_help="Fetch students submissions.")
     def fetch():
-        print('in cli.py/fetch()')
         """This prepares the students' submissions grading.
         Depending on the type of submission this could mean downloading the repositories from github or extracting the
         zip file from Moodle.
