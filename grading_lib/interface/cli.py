@@ -85,6 +85,7 @@ def run(grader_cls: Type[Grader]):
 
     @cli.command(short_help="Fetch students submissions.")
     def fetch():
+        print('in cli.py/fetch()')
         """This prepares the students' submissions grading.
         Depending on the type of submission this could mean downloading the repositories from github or extracting the
         zip file from Moodle.
